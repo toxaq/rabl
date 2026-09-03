@@ -2,7 +2,6 @@ module Rabl
   class Renderer
     # Defines class method rendering in supported formats
     # Rabl::Renderer.json(@post, 'posts/show')
-    # Rabl::Renderer.xml(@post, 'posts/show')
     Rabl::Engine::FORMATS.each do |fmt|
       instance_eval <<-CODE
       def #{fmt}(object, source, options = {})
@@ -43,7 +42,7 @@ module Rabl
     #     Override the render context_scope to the 'context_scope' object. Defaults to self.
     #
     # Returns: And object representing the transformed object in the requested format.
-    #   e.g. json, xml, bson, plist
+    #   e.g. json
     def render(context_scope = nil)
       context_scope ||= options[:scope] || self
 

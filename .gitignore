@@ -7,3 +7,4 @@ fixtures/rails2/log/*.log
 tags
 .idea
 yarn.lock
+vendor/bundle

@@ -242,7 +242,7 @@ module Rabl
       end
 
       # Returns a guess at the format in this context_scope
-      # request_format => "xml"
+      # request_format => "json"
       def request_format
         format = @options[:format]
         format = "json" if !format || format == "hash"

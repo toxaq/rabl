@@ -5,11 +5,11 @@ module Rabl
     include Helpers::Escaper
 
     # List of supported rendering formats
-    FORMATS = [:json, :xml, :plist, :bson, :msgpack]
-    SAFE_FORMATS = FORMATS + [:mpac, :dumpable, :hash]
+    FORMATS = [:json]
+    SAFE_FORMATS = FORMATS + [:dumpable, :hash]
 
     # Constructs a new ejs engine based on given vars, handler and declarations
-    # Rabl::Engine.new("...source...", { :format => "xml", :root => true, :view_path => "/path/to/views" })
+    # Rabl::Engine.new("...source...", { :format => "json", :root => true, :view_path => "/path/to/views" })
     def initialize(source, options = {})
       @_source        = source
       @_settings      = {}
@@ -26,7 +26,7 @@ module Rabl
     end
 
     # Renders the representation based on source, object, context_scope and locals
-    # Rabl::Engine.new("...source...", { :format => "xml" }).apply(context_scope, { :foo => "bar", :object => @user })
+    # Rabl::Engine.new("...source...", { :format => "json" }).apply(context_scope, { :foo => "bar", :object => @user })
     def apply(context_scope, locals, &block)
       locals = locals.dup unless locals.nil?
 
@@ -43,7 +43,7 @@ module Rabl
     end
 
     # Renders the representation based on a previous apply
-    # Rabl::Engine.new("...source...", { :format => "xml" }).apply(context_scope, { :foo => "bar", :object => @user }).render
+    # Rabl::Engine.new("...source...", { :format => "json" }).apply(context_scope, { :foo => "bar", :object => @user }).render
     def render(context_scope = nil, locals = nil, &block)
       apply(context_scope, locals, &block) if context_scope || locals || block
 
@@ -61,16 +61,7 @@ module Rabl
         if digestor_available? && respond_to?(:lookup_context) && lookup_context
           template = @_options[:template] || @virtual_path
 
-          digest =
-            if Rails.version.to_s =~ /^[678]/
-              Digestor.digest(name: template, finder: lookup_context, format: :rabl)
-            elsif Gem::Version.new(Rails.version) >= Gem::Version.new('4.1')
-              Digestor.digest(:name => template, :finder => lookup_context)
-            else
-              Digestor.digest(template, :rabl, lookup_context)
-            end
-
-          cache_key << digest
+          cache_key << Digestor.digest(name: template, finder: lookup_context, format: :rabl)
         end
 
         cache_key
@@ -112,51 +103,6 @@ module Rabl
       options.reverse_merge!({ :root => Rabl.configuration.include_json_root })
       result = to_dumpable(options)
       format_json(result)
-    end
-
-    # Returns a msgpack representation of the data object
-    # to_msgpack(:root => true)
-    def to_msgpack(options = {})
-      options = { :root => Rabl.configuration.include_msgpack_root }.merge(options)
-      result = to_dumpable(options)
-      Rabl.configuration.msgpack_engine.pack(result)
-    end
-    alias_method :to_mpac, :to_msgpack
-
-    # Returns a plist representation of the data object
-    # to_plist(:root => true)
-    def to_plist(options = {})
-      options = { :root => Rabl.configuration.include_plist_root }.merge(options)
-      result = to_dumpable(options)
-      Rabl.configuration.plist_engine.dump(result)
-    end
-
-    # Returns an xml representation of the data object
-    # to_xml(:root => true)
-    def to_xml(options = {})
-      options = {
-        :root       => (include_root = Rabl.configuration.include_xml_root),
-        :child_root => include_root && Rabl.configuration.include_child_root
-      }.merge(options)
-
-      xml_options = Rabl.configuration.default_xml_options.merge(:root => collection_root_name || root_name)
-
-      result = to_hash(options)
-
-      result.to_xml(xml_options)
-    end
-
-    # Returns a bson representation of the data object
-    # to_bson(:root => true)
-    def to_bson(options = {})
-      options = { :root => Rabl.configuration.include_bson_root }.merge(options)
-      result = to_dumpable(options)
-
-      if !collection_root_name && is_collection?(root_object) && root_object.is_a?(Array)
-        result = { root_name => result }
-      end
-
-      Rabl.configuration.bson_engine.serialize(result).to_s
     end
 
     # Sets the object to be used as the data source for this template
@@ -314,7 +260,7 @@ module Rabl
       end
 
       # Returns a guess at the format in this context_scope
-      # request_format => "xml"
+      # request_format => "json"
       def request_format
         format = request_params[:format]
 
@@ -402,7 +348,7 @@ module Rabl
       end
 
       def digestor_available?
-        defined?(Rails) && Rails.version =~ /^[45678]/
+        defined?(Rails)
       end
 
       def valid_format?(format)

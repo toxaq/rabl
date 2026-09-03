@@ -360,31 +360,4 @@ context "Rabl::Renderer" do
     end.equals JSON.parse("{\"user\":{\"age\":24,\"name\":\"ivan\",\"float\":1234.56}}")
   end # json
 
-  context '.msgpack' do
-    asserts 'it renders msgpack' do
-      File.open(tmp_path + "test.rabl", "w") do |f|
-        f.puts %q{
-          object @user
-          attributes :age, :name, :float
-        }
-      end
-
-      user = User.new(:name => 'ivan')
-      char_split Rabl::Renderer.msgpack(user, 'test', :view_path => tmp_path)
-    end.equals char_split("\x81\xA4user\x83\xA3age\x18\xA4name\xA4ivan\xA5float\xCB@\x93J=p\xA3\xD7\n")
-  end
-
-  context '.plist' do
-    asserts 'it renders xml' do
-      File.open(tmp_path + "test.rabl", "w") do |f|
-        f.puts %q{
-          object @user
-          attributes :age, :name, :float
-        }
-      end
-
-      user = User.new(:name => 'ivan')
-      clean_plist(Rabl::Renderer.plist(user, 'test', :view_path => tmp_path))
-    end.equals clean_plist("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n\t<key>user</key>\n\t<dict>\n\t\t<key>age</key>\n\t\t<integer>24</integer>\n\t\t<key>float</key>\n\t\t<real>1234.56</real>\n\t\t<key>name</key>\n\t\t<string>ivan</string>\n\t</dict>\n</dict>\n</plist>\n")
-  end
 end

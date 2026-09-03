@@ -4,6 +4,7 @@ require 'active_support/core_ext/object/blank'
 require 'active_support/core_ext/hash/reverse_merge'
 require 'active_support/core_ext/hash/except'
 require 'active_support/core_ext/hash/slice'
+require 'active_support/core_ext/array/extract_options'
 
 require 'rabl/version'
 require 'rabl/helpers'
@@ -16,10 +17,10 @@ require 'rabl/configuration'
 require 'rabl/renderer'
 require 'rabl/cache_engine'
 
-if defined?(Rails) && Rails.respond_to?(:version)
-  require 'rabl/tracker'  if Rails.version =~ /^[45678]/
-  require 'rabl/digestor' if Rails.version =~ /^[45678]/
-  require 'rabl/railtie'  if Rails.version =~ /^[345678]/
+if defined?(Rails)
+  require 'rabl/tracker'
+  require 'rabl/digestor'
+  require 'rabl/railtie'
 end
 
 # Rabl.register!
@@ -77,12 +78,4 @@ module Rabl
       Rabl::Renderer.new(source, object, options).render
     end
   end
-end
-
-# Register
-if defined?(Padrino)
-  require 'padrino-core'
-  Padrino.after_load { Rabl.register! }
-elsif defined?(Rails.version) && Rails.version =~ /^2/
-  Rabl.register!
 end

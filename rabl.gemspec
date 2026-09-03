@@ -9,8 +9,8 @@ Gem::Specification.new do |s|
   s.authors     = ["Nathan Esquenazi"]
   s.email       = ["nesquena@gmail.com"]
   s.homepage    = "https://github.com/nesquena/rabl"
-  s.summary     = %q{General ruby templating with json, bson, xml and msgpack support}
-  s.description = %q{General ruby templating with json, bson, xml and msgpack support}
+  s.summary     = %q{General ruby templating with json support}
+  s.description = %q{General ruby templating with json support}
   s.license     = 'MIT'
 
   s.files         = `git ls-files -z -- {*.md,MIT-LICENSE,lib}`.split("\x0").sort

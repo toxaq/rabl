@@ -30,13 +30,6 @@ else
 end
 
 module RiotTestHelpers
-  def char_split(str)
-    str.force_encoding("iso-8859-1").split("").sort
-  end
-
-  def clean_plist(text)
-    text.gsub(%r{<!DOCTYPE plist PUBLIC \"-//([\w\s]+?)//DTD PLIST 1.0//EN\"}, %q{<!DOCTYPE plist PUBLIC \"-//(TEST)//DTD PLIST 1.0//EN\"})
-  end
 end
 
 class Riot::Situation

@@ -15,7 +15,7 @@ context "Rabl::Engine" do
 
   context "#initialize" do
     setup do
-      Rabl::Engine.new("...source...", { :format => 'xml', :root => true, :view_path => '/path/to/views' })
+      Rabl::Engine.new("...source...", { :format => 'json', :root => true, :view_path => '/path/to/views' })
     end
 
     asserts_topic.assigns :_source
@@ -64,15 +64,6 @@ context "Rabl::Engine" do
       end
 
       asserts_topic.equivalent_to('{"foo":"bar"}')
-    end
-
-    context "with a specified format" do
-      setup do
-        template = RablTemplate.new("code", :format => 'xml') { 'node(:foo) { "bar" }' }
-        template.render(Object.new)
-      end
-
-      asserts_topic.includes('<foo>bar</foo>')
     end
 
     context "don't allow calls to inherited methods; default to JSON" do
@@ -142,7 +133,6 @@ context "Rabl::Engine" do
     setup do
       Rabl.configure do |config|
         config.include_json_root     = true
-        config.include_xml_root      = false
         config.enable_json_callbacks = false
       end
     end
@@ -529,7 +519,6 @@ context "Rabl::Engine" do
     setup do
       Rabl.configure do |config|
         config.include_json_root     = false
-        config.include_xml_root      = false
         config.enable_json_callbacks = false
       end
     end
@@ -882,7 +871,6 @@ context "Rabl::Engine" do
     setup do
       Rabl.configure do |config|
         config.include_child_root    = false
-        config.include_xml_root      = false
         config.enable_json_callbacks = false
       end
     end

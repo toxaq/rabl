@@ -90,7 +90,7 @@ module Rabl
     end
 
     # Returns the context_scope wrapping this engine, used for retrieving data, invoking methods, etc
-    # In Rails, this is the controller and in Padrino this is the request context
+    # In Rails, this is the controller
     def context_scope
       defined?(@_context_scope) ? @_context_scope : nil
     end
