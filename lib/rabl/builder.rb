@@ -239,11 +239,38 @@ module Rabl
 
       # Extends an existing rabl template with additional attributes in the block
       # extends("users/show") { attribute :full_name }
+      # The engine (and its fetched template source) is cached per declaration
+      # and re-applied across the items of a collection; the template source
+      # is re-evaluated per item so conditional logic inside it still applies.
+      # The cache lives in the settings hash, which survives the per-item
+      # re-evaluation of an enclosing child block (unlike the setting itself).
       def extends(file, options = {}, &block)
         return unless resolve_condition(options)
 
         options = @options.slice(:child_root).merge!(:object => @_object).merge!(options)
-        engines << partial_as_engine(file, options, &block)
+
+        if @options[:read_multi]
+          options[:parent_object] = @options[:parent_object]
+          engines << partial_as_engine(file, options, &block)
+          return
+        end
+
+        cache = (@settings[:_extends_engines] ||= {})
+        key   = [file, block && block.source_location]
+        signature = options.except(:object)
+
+        cached_engine, cached_signature = cache[key]
+        if cached_engine && cached_signature == signature
+          engines << cached_engine.reapply({ :object => options[:object], :parent_object => @options[:parent_object], :locals => options[:locals] }, &block)
+          return
+        end
+
+        options[:parent_object] = @options[:parent_object]
+        engine = partial_as_engine(file, options, &block)
+
+        cache[key] = [engine, signature] if engine.is_a?(Engine)
+
+        engines << engine
       end
 
       # Invokes a node/attribute block with the current object, also passing

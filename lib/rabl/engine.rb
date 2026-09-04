@@ -35,6 +35,10 @@ module Rabl
       reset_settings!
       reset_options!
 
+      # engines cached across reapplies hold state from the previous
+      # context; a fresh apply must not reuse them (see Builder#extends)
+      @_settings.delete(:_extends_engines)
+
       eval_source(locals, &block)
 
       exec_template_block(&block) if block_given?

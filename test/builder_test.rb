@@ -297,7 +297,7 @@ context "Rabl::Builder" do
     asserts "that it does not generate if no data is present" do
       b = builder nil, :extends => [{ :file => 'users/show', :options => {}, :block => lambda { |u| attribute :name  }}]
       e = Rabl::Engine.new('users/show')
-      mock(b).partial_as_engine('users/show',{ :object => @user}).returns(e)
+      mock(b).partial_as_engine('users/show',{ :object => @user, :parent_object => nil }).returns(e)
       mock(e).render.returns({}).subject
       b.to_hash(@user)
     end.equals({})
@@ -305,7 +305,7 @@ context "Rabl::Builder" do
     asserts "that it generates if data is present" do
       b = builder nil, :extends => [{ :file => 'users/show', :options => {}, :block => lambda { |u| attribute :name  }}]
       e = Rabl::Engine.new('users/show')
-      mock(b).partial_as_engine('users/show',{ :object => @user}).returns(e)
+      mock(b).partial_as_engine('users/show',{ :object => @user, :parent_object => nil }).returns(e)
       mock(e).render.returns({:user => 'xyz'}).subject
       b.to_hash(@user)
     end.equivalent_to({:user => 'xyz'})
@@ -313,7 +313,7 @@ context "Rabl::Builder" do
     asserts "that it generates if local data is present but object is false" do
       b = builder nil, :extends => [{ :file => 'users/show', :options => { :object => @user }, :block => lambda { |u| attribute :name  }}]
       e = Rabl::Engine.new('users/show')
-      mock(b).partial_as_engine('users/show',{ :object => @user}).returns(e)
+      mock(b).partial_as_engine('users/show',{ :object => @user, :parent_object => nil }).returns(e)
       mock(e).render.returns({:user => 'xyz'}).subject
       b.to_hash(false)
     end.equivalent_to({:user => 'xyz'})
@@ -321,7 +321,7 @@ context "Rabl::Builder" do
     asserts "that it generates with exclude 'except' option" do
       b = builder nil, :extends => [{ :file => 'users/show', :options => { :except => :user_id }, :block => lambda { |u| attribute :name  }}]
       e = Rabl::Engine.new('users/show')
-      mock(b).partial_as_engine('users/show',{ :object => @user, except: :user_id}).returns(e)
+      mock(b).partial_as_engine('users/show',{ :object => @user, except: :user_id, :parent_object => nil }).returns(e)
       mock(e).render.returns({:user => 'xyz'}).subject
       b.to_hash(@user)
     end.equivalent_to({:user => 'xyz'})

@@ -934,6 +934,63 @@ context "Rabl::Engine" do
         scope.instance_variable_set :@user, User.new(:name => 'leo', :age => 12)
         JSON.parse(template.render(scope))
       end.equals JSON.parse("{\"name\":\"leo\"}")
+
+      asserts "that extended template conditionals are re-evaluated per collection item (engine reuse)" do
+        File.open(tmp_path + "conditional.json.rabl", "w") do |f|
+          f.puts %q{
+            attribute :name
+            attributes :twitter if root_object.name == 'leo'
+          }
+        end
+        template = rabl %{
+          collection @users
+          extends 'conditional'
+        }
+        scope = Object.new
+        scope.instance_variable_set :@users, [
+          User.new(:name => 'leo', :twitter => '@leo'),
+          User.new(:name => 'lea', :twitter => '@lea')
+        ]
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("[{\"name\":\"leo\",\"twitter\":\"@leo\"},{\"name\":\"lea\"}]")
+
+      asserts "that extends inside a child block renders per item across a collection" do
+        File.open(tmp_path + "hobby.json.rabl", "w") do |f|
+          f.puts %q{
+            attribute :name
+          }
+        end
+        template = rabl %{
+          collection @users
+          attribute :name
+          child(:hobbies => :hobbies) { extends 'hobby' }
+        }
+        scope = Object.new
+        scope.instance_variable_set :@users, [
+          User.new(:name => 'leo', :hobbies => ['Surfing']),
+          User.new(:name => 'lea', :hobbies => ['Golf', 'Chess'])
+        ]
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("[{\"name\":\"leo\",\"hobbies\":[{\"hobby\":{\"name\":\"Surfing\"}}]},{\"name\":\"lea\",\"hobbies\":[{\"hobby\":{\"name\":\"Golf\"}},{\"hobby\":{\"name\":\"Chess\"}}]}]")
+
+      asserts "that extends inside a child block re-evaluates template conditionals per item" do
+        File.open(tmp_path + "sti_hobby.json.rabl", "w") do |f|
+          f.puts %q{
+            attribute :name
+            node(:featured) { true } if root_object.name == 'Golf'
+          }
+        end
+        template = rabl %{
+          collection @users
+          child(:hobbies => :hobbies) { extends 'sti_hobby' }
+        }
+        scope = Object.new
+        scope.instance_variable_set :@users, [
+          User.new(:hobbies => ['Surfing']),
+          User.new(:hobbies => ['Golf'])
+        ]
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("[{\"hobbies\":[{\"hobby\":{\"name\":\"Surfing\"}}]},{\"hobbies\":[{\"hobby\":{\"name\":\"Golf\",\"featured\":true}}]}]")
     end
 
     teardown do
