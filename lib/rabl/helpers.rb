@@ -133,7 +133,10 @@ module Rabl
         :root       => (options[:root] || false)
       })
 
-      Engine.new(options[:source], options).apply(context_scope, :object => object, :locals => options[:locals], &block)
+      locals = { :object => object, :locals => options[:locals] }
+      locals[:parent_object] = options[:parent_object] if options.key?(:parent_object)
+
+      Engine.new(options[:source], options).apply(context_scope, locals, &block)
     end
 
     # Fetches a key from the cache and stores rabl template result otherwise

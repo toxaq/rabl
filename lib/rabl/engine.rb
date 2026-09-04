@@ -37,9 +37,36 @@ module Rabl
 
       eval_source(locals, &block)
 
-      instance_exec(root_object, &block) if block_given?
+      exec_template_block(&block) if block_given?
 
       self
+    end
+
+    # Re-applies this engine to another object, reusing the context state
+    # (copied instance variables, format, compiled source) from the first
+    # apply. Only valid with the same context_scope; used to render one
+    # child/glue declaration across every item of a collection.
+    def reapply(locals, &block)
+      reset_render_state!
+
+      @_locals = locals.dup
+
+      set_locals(@_locals)
+
+      reset_settings!
+      reset_options!
+
+      eval_source(@_locals, &block)
+
+      exec_template_block(&block) if block_given?
+
+      self
+    end
+
+    # Returns the object of the enclosing template scope (e.g. the item
+    # being rendered when this engine renders one of its children)
+    def parent_object
+      defined?(@_locals) && @_locals ? @_locals[:parent_object] : nil
     end
 
     # Renders the representation based on a previous apply
@@ -76,6 +103,7 @@ module Rabl
       data = root_object
 
       options[:root_name] = determine_object_root(data, root_name, options[:root])
+      options[:parent_object] = parent_object
 
       result =
         if is_object?(data) || !data # object @user
@@ -326,6 +354,26 @@ module Rabl
         @_settings[:child]       = []
         @_settings[:glue]        = []
         @_settings[:extends]     = []
+      end
+
+      # Evaluates a template block against this engine, also passing the
+      # parent object through when the block asks for a second argument
+      def exec_template_block(&block)
+        if block.arity >= 0 && block.arity <= 1
+          instance_exec(root_object, &block)
+        else
+          instance_exec(root_object, parent_object, &block)
+        end
+      end
+
+      # Clears state memoized while rendering one object so the engine can
+      # be re-applied to another (see #reapply).
+      def reset_render_state!
+        [:@_data_object, :@_root_name_data, :@_data_name,
+         :@_object_root_name, :@_collection_name,
+         :@_cache_key, :@_cache_options, :@_full_cache_key].each do |ivar|
+          remove_instance_variable(ivar) if instance_variable_defined?(ivar)
+        end
       end
 
       # Resets the options parsed from a rabl template.

@@ -113,7 +113,13 @@ module Rabl
 
         settings_type = SETTING_TYPES[type]
         @settings[type].each do |setting|
-          send(type, setting[settings_type], setting[:options] || {}, &setting[:block])
+          if type == :child || type == :glue
+            # the setting itself is passed along so the engine compiled for
+            # it can be reused across the items of a collection
+            send(type, setting[settings_type], setting[:options] || {}, setting, &setting[:block])
+          else
+            send(type, setting[settings_type], setting[:options] || {}, &setting[:block])
+          end
         end
       end
 
@@ -140,7 +146,7 @@ module Rabl
         return unless @_object
 
         if block_given?
-          result = block.call(@_object)
+          result = call_block(block)
           return unless result.is_a?(Array)
           result.each do |name|
             @_result[name] = data_object_attribute(name)
@@ -162,7 +168,7 @@ module Rabl
         return unless resolve_condition(options)
         return if @options.has_key?(:except) && [@options[:except]].flatten.include?(name)
 
-        result = block.call(@_object)
+        result = call_block(block)
         if name.present?
           @_result[create_key(name)] = result
         elsif result.is_a?(Hash) # merge hash into root hash
@@ -175,7 +181,7 @@ module Rabl
       # child(@user) { attribute :full_name }
       # child(@user => :person) { ... }
       # child(@users => :people) { ... }
-      def child(data, options = {}, &block)
+      def child(data, options = {}, setting = nil, &block)
         return unless data.present? && resolve_condition(options)
 
         name   = is_name_value?(options[:root]) ? options[:root] : data_name(data)
@@ -187,17 +193,44 @@ module Rabl
 
         object = { object => name } if data.is_a?(Hash) && object # child :users => :people
 
-        engines << { create_key(name) => object_to_engine(object, engine_options, &block) }
+        engines << { create_key(name) => setting_to_engine(setting, object, engine_options, &block) }
       end
 
       # Glues data from a child node to the json_output
       # glue(@user) { attribute :full_name => :user_full_name }
-      def glue(data, options = {}, &block)
+      def glue(data, options = {}, setting = nil, &block)
         return unless data.present? && resolve_condition(options)
 
         object = data_object(data)
-        engine = object_to_engine(object, :root => false, &block)
+        engine = setting_to_engine(setting, object, { :root => false }, &block)
         engines << engine if engine
+      end
+
+      # Builds the engine for a child/glue declaration. Within a collection
+      # every item shares the same declaration (setting), so the engine
+      # compiled for the first item is re-applied to subsequent items
+      # instead of constructing a new engine per item. Reuse is skipped
+      # when engines must stay distinct for the read_multi cache lookup.
+      def setting_to_engine(setting, object, engine_options, &block)
+        reusable = setting && !@options[:read_multi]
+
+        if reusable && (engine = setting[:_engine]) && setting[:_engine_options] == engine_options
+          return nil if object.nil?
+
+          return engine.reapply({ :object => object, :parent_object => @_object, :locals => engine_options[:locals] }, &block)
+        end
+
+        saved_options = engine_options.dup if reusable
+
+        engine_options[:parent_object] = @_object
+        engine = object_to_engine(object, engine_options, &block)
+
+        if reusable && engine.is_a?(Engine)
+          setting[:_engine]         = engine
+          setting[:_engine_options] = saved_options
+        end
+
+        engine
       end
 
       # Extends an existing rabl template with additional attributes in the block
@@ -207,6 +240,16 @@ module Rabl
 
         options = @options.slice(:child_root).merge!(:object => @_object).merge!(options)
         engines << partial_as_engine(file, options, &block)
+      end
+
+      # Invokes a node/attribute block with the current object, also passing
+      # the parent object through when the block asks for a second argument
+      def call_block(block)
+        if block.arity >= 0 && block.arity <= 1
+          block.call(@_object)
+        else
+          block.call(@_object, @options[:parent_object])
+        end
       end
 
       # Evaluate conditions given a symbol/proc/lambda/variable to evaluate

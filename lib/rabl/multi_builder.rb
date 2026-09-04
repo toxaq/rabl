@@ -16,9 +16,15 @@ module Rabl
 
     # Returns the result of all of the builders as an array
     def to_a
+      if read_multi = template_cache_configured? && Rabl.configuration.use_read_multi
+        # engines are collected across all builders before any renders, so
+        # child/glue engine reuse must stay off (see Builder#setting_to_engine)
+        @options[:read_multi] = true
+      end
+
       generate_builders
 
-      if template_cache_configured? && Rabl.configuration.use_read_multi
+      if read_multi
         map_engines_to_builders
         read_cache_results
         replace_engines_with_cache_results

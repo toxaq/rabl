@@ -368,6 +368,80 @@ context "Rabl::Engine" do
         JSON.parse(template.render(scope))
       end.equals JSON.parse("{\"user\":{\"name\":\"leo\",\"user\":{\"city\":\"LA\"}}}")
 
+      asserts "that it renders per-item child values across a collection (engine reuse)" do
+        template = rabl %{
+          collection @users
+          attribute :name
+          child(:hobbies) { attribute :name }
+        }
+        scope = Object.new
+        scope.instance_variable_set :@users, [
+          User.new(:name => 'leo', :hobbies => ['Surfing']),
+          User.new(:name => 'lea', :hobbies => ['Golf', 'Chess'])
+        ]
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("[{\"user\":{\"name\":\"leo\",\"hobbies\":[{\"hobby\":{\"name\":\"Surfing\"}}]}},{\"user\":{\"name\":\"lea\",\"hobbies\":[{\"hobby\":{\"name\":\"Golf\"}},{\"hobby\":{\"name\":\"Chess\"}}]}}]")
+
+      asserts "that child settings are re-evaluated for each collection item" do
+        template = rabl %{
+          collection @users
+          child(:hobbies) do |hobbies, user|
+            attribute :name if user.name == 'leo'
+          end
+        }
+        scope = Object.new
+        scope.instance_variable_set :@users, [
+          User.new(:name => 'leo', :hobbies => ['Surfing']),
+          User.new(:name => 'lea', :hobbies => ['Golf'])
+        ]
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("[{\"user\":{\"hobbies\":[{\"hobby\":{\"name\":\"Surfing\"}}]}},{\"user\":{\"hobbies\":[{\"hobby\":{}}]}}]")
+
+      asserts "that parent_object is accessible within a child node" do
+        template = rabl %{
+          collection @users
+          child(:hobbies) do
+            attribute :name
+            node(:owner) { parent_object.name }
+          end
+        }
+        scope = Object.new
+        scope.instance_variable_set :@users, [
+          User.new(:name => 'leo', :hobbies => ['Surfing']),
+          User.new(:name => 'lea', :hobbies => ['Golf'])
+        ]
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("[{\"user\":{\"hobbies\":[{\"hobby\":{\"name\":\"Surfing\",\"owner\":\"leo\"}}]}},{\"user\":{\"hobbies\":[{\"hobby\":{\"name\":\"Golf\",\"owner\":\"lea\"}}]}}]")
+
+      asserts "that node blocks receive the parent object as a second argument" do
+        template = rabl %{
+          object @user
+          child(:hobbies) do
+            node(:label) { |hobby, user| user.name + "-" + hobby.name }
+          end
+        }
+        scope = Object.new
+        scope.instance_variable_set :@user, User.new(:name => 'leo', :hobbies => ['Surfing'])
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("{\"user\":{\"hobbies\":[{\"hobby\":{\"label\":\"leo-Surfing\"}}]}}")
+
+      asserts "that it renders correct per-item child values when read_multi is enabled" do
+        Rabl.configuration.perform_caching = true
+        Rabl.configuration.use_read_multi  = true
+        template = rabl %{
+          collection @users
+          child(:hobbies) { attribute :name }
+        }
+        scope = Object.new
+        scope.instance_variable_set :@users, [
+          User.new(:hobbies => ['Surfing']),
+          User.new(:hobbies => ['Golf'])
+        ]
+        result = JSON.parse(template.render(scope))
+        Rabl.configuration.perform_caching = false
+        result
+      end.equals JSON.parse("[{\"user\":{\"hobbies\":[{\"hobby\":{\"name\":\"Surfing\"}}]}},{\"user\":{\"hobbies\":[{\"hobby\":{\"name\":\"Golf\"}}]}}]")
+
       asserts "that it can create a child node with different key" do
         template = rabl %{
           object @user
