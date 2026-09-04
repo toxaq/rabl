@@ -2,6 +2,20 @@ require 'active_support/inflector' # for the sake of pluralizing
 
 module Rabl
   module Helpers
+    # Inflections are pure string functions but regex-heavy, and rendering a
+    # collection runs them per child per item — so cache the results.
+    # Bounded in practice by the set of names appearing in templates.
+    @_pluralize_cache   = {}
+    @_singularize_cache = {}
+
+    def self.pluralize(str)
+      @_pluralize_cache[str] ||= str.pluralize
+    end
+
+    def self.singularize(str)
+      @_singularize_cache[str] ||= str.singularize
+    end
+
     # data_object(data) => <AR Object>
     # data_object(@user => :person) => @user
     # data_object(:user => :person) => @_object.send(:user)
@@ -14,10 +28,16 @@ module Rabl
     # data_object_attribute(data) => @_object.send(data)
     def data_object_attribute(data)
       attribute = @_object.__send__(data)
-      attribute = attribute.as_json if
-        is_collection?(attribute, false) &&
-        attribute.respond_to?(:as_json)
-      attribute
+
+      case attribute
+      when String, Numeric, Symbol, NilClass, TrueClass, FalseClass, Time
+        attribute # common scalar values can't be collections
+      else
+        attribute = attribute.as_json if
+          is_collection?(attribute, false) &&
+          attribute.respond_to?(:as_json)
+        attribute
+      end
     end
 
     # data_name(data) => "user"
@@ -38,7 +58,7 @@ module Rabl
 
         if object_name.nil? && data.respond_to?(:first)
           first = data.first
-          object_name = data_name(first).to_s.pluralize if first.present?
+          object_name = Helpers.pluralize(data_name(first).to_s) if first.present?
         end
 
         object_name ||= data_token if data_token.is_a?(Symbol)
@@ -46,7 +66,7 @@ module Rabl
       elsif is_object?(data) # data is an object
         object_name = object_root_name if object_root_name
         object_name ||= data if data.is_a?(Symbol)
-        object_name ||= collection_root_name.to_s.singularize if collection_root_name
+        object_name ||= Helpers.singularize(collection_root_name.to_s) if collection_root_name
         object_name ||= data.class.respond_to?(:model_name) ? data.class.model_name.element : data.class.to_s.downcase
         object_name
       else
@@ -66,7 +86,7 @@ module Rabl
       if is_object?(data_token) || data_token.nil?
         root_name
       elsif is_collection?(data_token)
-        object_root_name || (root_name.singularize if root_name)
+        object_root_name || (Helpers.singularize(root_name) if root_name)
       end
     end
 

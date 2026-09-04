@@ -24,6 +24,7 @@ module Rabl
       @options        = options
       @_context_scope = options[:scope]
       @_view_path     = options[:view_path]
+      @configuration  = Rabl.configuration
     end
 
     def engines
@@ -59,9 +60,9 @@ module Rabl
         # Merges directly into @_result
         compile_settings(:node)
 
-        replace_nil_values          if Rabl.configuration.replace_nil_values_with_empty_strings
-        replace_empty_string_values if Rabl.configuration.replace_empty_string_values_with_nil_values
-        remove_nil_values           if Rabl.configuration.exclude_nil_values
+        replace_nil_values          if @configuration.replace_nil_values_with_empty_strings
+        replace_empty_string_values if @configuration.replace_empty_string_values_with_nil_values
+        remove_nil_values           if @configuration.exclude_nil_values
 
         result = @_result
         result = { @options[:root_name] => result } if @options[:root_name].present?
@@ -109,15 +110,18 @@ module Rabl
       end
 
       def compile_settings(type)
-        return unless @settings.has_key?(type)
+        settings = @settings[type]
+        return if settings.nil? || settings.empty?
 
         settings_type = SETTING_TYPES[type]
-        @settings[type].each do |setting|
-          if type == :child || type == :glue
-            # the setting itself is passed along so the engine compiled for
-            # it can be reused across the items of a collection
+        if type == :child || type == :glue
+          # the setting itself is passed along so the engine compiled for
+          # it can be reused across the items of a collection
+          settings.each do |setting|
             send(type, setting[settings_type], setting[:options] || {}, setting, &setting[:block])
-          else
+          end
+        else
+          settings.each do |setting|
             send(type, setting[settings_type], setting[:options] || {}, &setting[:block])
           end
         end
@@ -267,6 +271,8 @@ module Rabl
       # resolve_condition(:unless => lambda { |m| false }) => true
       # resolve_condition(:unless => lambda { |m| false }, :if => proc { true}) => true
       def resolve_condition(options)
+        return true if options.empty?
+
         result = true
         result &&=  call_condition_proc(options[:if], @_object)     if
           options.key?(:if)
@@ -280,7 +286,7 @@ module Rabl
       # attribute_present?(created_at) => true
       def attribute_present?(name)
         @_object.respond_to?(name) ||
-          (Rabl.configuration.raise_on_missing_attribute &&
+          (@configuration.raise_on_missing_attribute &&
            raise("Failed to render missing attribute #{name}"))
       end
 
@@ -295,7 +301,7 @@ module Rabl
       # Caches the results of the block based on object cache_key
       # cache_results { compile_hash(options) }
       def cache_results(&block)
-        if template_cache_configured? && Rabl.configuration.cache_all_output && @_object.respond_to?(:cache_key)
+        if template_cache_configured? && @configuration.cache_all_output && @_object.respond_to?(:cache_key)
           cache_key = [@_object, @options[:root_name], @options[:format]]
 
           fetch_result_from_cache(cache_key, &block)
@@ -305,8 +311,8 @@ module Rabl
       end
 
       def create_key(name)
-        if Rabl.configuration.camelize_keys
-          name.to_s.camelize(Rabl.configuration.camelize_keys == :upper ? :upper : :lower).to_sym
+        if @configuration.camelize_keys
+          name.to_s.camelize(@configuration.camelize_keys == :upper ? :upper : :lower).to_sym
         else
           name.to_sym
         end
