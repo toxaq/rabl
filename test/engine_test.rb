@@ -385,8 +385,8 @@ context "Rabl::Engine" do
       asserts "that child settings are re-evaluated for each collection item" do
         template = rabl %{
           collection @users
-          child(:hobbies) do |hobbies, user|
-            attribute :name if user.name == 'leo'
+          child(:hobbies) do
+            attribute :name if parent_object.name == 'leo'
           end
         }
         scope = Object.new
@@ -413,17 +413,30 @@ context "Rabl::Engine" do
         JSON.parse(template.render(scope))
       end.equals JSON.parse("[{\"user\":{\"hobbies\":[{\"hobby\":{\"name\":\"Surfing\",\"owner\":\"leo\"}}]}},{\"user\":{\"hobbies\":[{\"hobby\":{\"name\":\"Golf\",\"owner\":\"lea\"}}]}}]")
 
-      asserts "that node blocks receive the parent object as a second argument" do
+      asserts "that node blocks can reach the parent via parent_object" do
         template = rabl %{
           object @user
           child(:hobbies) do
-            node(:label) { |hobby, user| user.name + "-" + hobby.name }
+            node(:label) { |hobby| parent_object.name + "-" + hobby.name }
           end
         }
         scope = Object.new
         scope.instance_variable_set :@user, User.new(:name => 'leo', :hobbies => ['Surfing'])
         JSON.parse(template.render(scope))
       end.equals JSON.parse("{\"user\":{\"hobbies\":[{\"hobby\":{\"label\":\"leo-Surfing\"}}]}}")
+
+      asserts "that a multi-parameter child block keeps legacy proc-splat semantics" do
+        # a 2-param proc given one array-like argument splats it; templates
+        # in the wild use this to grab the first item of a collection child
+        template = rabl %{
+          child(@users => :users) do |u, _second|
+            node(:first_name) { u.name }
+          end
+        }
+        scope = Object.new
+        scope.instance_variable_set :@users, [User.new(:name => 'leo'), User.new(:name => 'lea')]
+        JSON.parse(template.render(scope))
+      end.equals JSON.parse("{\"users\":[{\"user\":{\"first_name\":\"leo\"}},{\"user\":{\"first_name\":\"leo\"}}]}")
 
       asserts "that it renders correct per-item child values when read_multi is enabled" do
         Rabl.configuration.perform_caching = true

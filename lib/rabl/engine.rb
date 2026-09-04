@@ -41,7 +41,7 @@ module Rabl
 
       eval_source(locals, &block)
 
-      exec_template_block(&block) if block_given?
+      instance_exec(root_object, &block) if block_given?
 
       self
     end
@@ -62,7 +62,7 @@ module Rabl
 
       eval_source(@_locals, &block)
 
-      exec_template_block(&block) if block_given?
+      instance_exec(root_object, &block) if block_given?
 
       self
     end
@@ -358,16 +358,6 @@ module Rabl
         @_settings[:child]       = []
         @_settings[:glue]        = []
         @_settings[:extends]     = []
-      end
-
-      # Evaluates a template block against this engine, also passing the
-      # parent object through when the block asks for a second argument
-      def exec_template_block(&block)
-        if block.arity >= 0 && block.arity <= 1
-          instance_exec(root_object, &block)
-        else
-          instance_exec(root_object, parent_object, &block)
-        end
       end
 
       # Clears state memoized while rendering one object so the engine can

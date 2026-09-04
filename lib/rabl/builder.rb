@@ -150,7 +150,7 @@ module Rabl
         return unless @_object
 
         if block_given?
-          result = call_block(block)
+          result = block.call(@_object)
           return unless result.is_a?(Array)
           result.each do |name|
             @_result[name] = data_object_attribute(name)
@@ -172,7 +172,7 @@ module Rabl
         return unless resolve_condition(options)
         return if @options.has_key?(:except) && [@options[:except]].flatten.include?(name)
 
-        result = call_block(block)
+        result = block.call(@_object)
         if name.present?
           @_result[create_key(name)] = result
         elsif result.is_a?(Hash) # merge hash into root hash
@@ -271,16 +271,6 @@ module Rabl
         cache[key] = [engine, signature] if engine.is_a?(Engine)
 
         engines << engine
-      end
-
-      # Invokes a node/attribute block with the current object, also passing
-      # the parent object through when the block asks for a second argument
-      def call_block(block)
-        if block.arity >= 0 && block.arity <= 1
-          block.call(@_object)
-        else
-          block.call(@_object, @options[:parent_object])
-        end
       end
 
       # Evaluate conditions given a symbol/proc/lambda/variable to evaluate
