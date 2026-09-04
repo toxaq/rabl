@@ -16,10 +16,7 @@ Gem::Specification.new do |s|
   s.files         = `git ls-files -z -- {*.md,MIT-LICENSE,lib}`.split("\x0").sort
   s.require_paths = ["lib"]
 
+  s.required_ruby_version = '>= 3.0'
 
-  if RUBY_VERSION < "1.9"
-    s.add_dependency 'activesupport', '>= 2.3.14', '<= 4'
-  else
-    s.add_dependency "activesupport", '>= 2.3.14'
-  end
+  s.add_dependency "activesupport", '>= 6.0'
 end
